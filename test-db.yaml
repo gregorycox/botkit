@@ -1,0 +1,123 @@
+Description: >
+  Create DB Instance
+
+Parameters:
+  Subnet1:
+    Type: AWS::EC2::Subnet::Id
+  Subnet2:
+    Type: AWS::EC2::Subnet::Id
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  VpcCIDR:
+    Type: String
+
+  SecurityGroup:
+    Type: String
+
+  DBName:
+    Default: botkit
+    Description: testdb database name
+    Type: String
+    MinLength: 1
+    MaxLength: 64
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+
+  DBUsername:
+    Default: dbadmin
+    NoEcho: true
+    Description: testdb admin account username
+    Type: String
+    MinLength: 1
+    MaxLength: 16
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must begin with a letter and contain only alphanumeric characters.
+
+  DBPassword:
+    Default: password
+    NoEcho: true
+    Description: testdb admin account password
+    Type: String
+    MinLength: 6
+    MaxLength: 41
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: must contain only alphanumeric characters.
+
+  DBClass:
+    Default: db.t2.micro
+    Description: Database instance class
+    Type: String
+    AllowedValues:
+      - db.t2.micro
+      - db.m1.small
+      - db.m1.large
+      - db.m1.xlarge
+      - db.m2.xlarge
+      - db.m2.2xlarge
+      - db.m2.4xlarge
+    ConstraintDescription: must select a valid database instance type.
+
+  DBAllocatedStorage:
+    Default: 16
+    Description: The size of the database (Gb)
+    Type: Number
+    MinValue: 5
+    MaxValue: 1024
+    ConstraintDescription: must be between 5 and 1024Gb.
+
+
+Resources:
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Frontend Access
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref SecurityGroup
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref VpcCIDR
+
+  DBParamGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Database Parameter Group + pg_stat_statements
+      Family: postgres9.6
+      Parameters:
+        shared_preload_libraries: pg_stat_statements
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription : DB Subnet
+      SubnetIds:
+        - !Ref Subnet1
+        - !Ref Subnet2
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName: !Ref DBName
+      AllocatedStorage: !Ref DBAllocatedStorage
+      DBInstanceClass: !Ref DBClass
+      Engine: postgres
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      DBParameterGroupName: !Ref DBParamGroup
+      VPCSecurityGroups:
+        - !GetAtt DBSecurityGroup.GroupId
+
+
+Outputs:
+  DBAddress:
+      Value: !GetAtt DBInstance.Endpoint.Address
+
+

@@ -1,0 +1,304 @@
+Description: >
+  Create ECS Cluster resources for Deployment on ECS.
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t2.medium
+
+  ClusterSize:
+    Type: Number
+    Default: 1
+
+  Subnet1:
+    Type: AWS::EC2::Subnet::Id
+
+  Subnet2:
+    Type: AWS::EC2::Subnet::Id
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+  VpcCIDR:
+    Type: String
+
+  Code:
+    Type: String
+    Default: latest
+
+  Repository:
+    Type: String
+
+  TemplateBucket:
+    Type: String
+    Description: >
+      S3 Bucket used for nested templates
+
+  HostedZoneName:
+    Type: String
+
+  Hostname:
+    Type: String
+
+  certificateArn:
+    Type: String
+
+  clientId:
+    Type: String
+
+  clientSecret:
+    Type: String
+
+  Stack:
+    Type: String
+
+  lexBotName:
+    Type: String
+
+  DBPassword:
+    Default: password
+    NoEcho: true
+    Description: testdb admin account password
+    Type: String
+    MinLength: 6
+    MaxLength: 41
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: must contain only alphanumeric characters.
+
+Mappings:
+  AWSRegionToAMI:
+    us-east-1:
+      AMI: ami-6df8fe7a
+    us-east-2:
+      AMI: ami-c6b5efa3
+    us-west-1:
+      AMI: ami-1eda8d7e
+    us-west-2:
+      AMI: ami-a2ca61c2
+    eu-west-1:
+      AMI: ami-ba346ec9
+    eu-west-2:
+      AMI: ami-42c5cf26
+    eu-central-1:
+      AMI: ami-e012d48f
+    ap-northeast-1:
+      AMI: ami-08f7956f
+    ap-southeast-1:
+      AMI: ami-f4832f97
+    ap-southeast-2:
+      AMI: ami-774b7314
+    ca-central-1:
+      AMI: ami-be45f7da
+
+Resources:
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      #RoleName: !Sub ecs-${AWS::StackName}
+      AssumeRolePolicyDocument: |
+        {
+            "Statement": [{
+                "Effect": "Allow",
+                "Principal": { "Service": [ "ec2.amazonaws.com" ]},
+                "Action": [ "sts:AssumeRole" ]
+            }]
+        }
+      Policies:
+        - PolicyName: ecsCluster
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - lambda:invokeFunction
+                  - ecs:CreateCluster
+                  - ecs:DeregisterContainerInstance
+                  - ecs:DiscoverPollEndpoint
+                  - ecs:Poll
+                  - ecs:RegisterContainerInstance
+                  - ecs:StartTelemetrySession
+                  - ecs:UpdateContainerInstancesState
+                  - ecs:Submit*
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - lex:PostContent
+                  - lex:PostText
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref ECSRole
+
+  SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: !Sub ${AWS::StackName}-hosts
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !GetAtt LoadBalancer.Outputs.SecurityGroup
+          IpProtocol: -1
+      VpcId: !Ref VpcId
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref AWS::StackName
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref Subnet1
+        - !Ref Subnet2
+      LaunchConfigurationName: !Ref LaunchConfiguration
+      MinSize: 1
+      MaxSize: 4
+      DesiredCapacity: !Ref ClusterSize
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} - ECS Host
+          PropagateAtLaunch: true
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: 1
+        MaxBatchSize: 1
+        PauseTime: PT15M
+        WaitOnResourceSignals: true
+
+  LaunchConfiguration:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Metadata:
+      AWS::CloudFormation::Init:
+        config:
+          commands:
+            01_add_instance_to_cluster:
+                command: !Sub echo ECS_CLUSTER=${Cluster} > /etc/ecs/ecs.config
+          files:
+            "/etc/cfn/cfn-hup.conf":
+              mode: 000400
+              owner: root
+              group: root
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+            "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.ContainerInstances.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: true
+                ensureRunning: true
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+    Properties:
+      ImageId: !FindInMap [ AWSRegionToAMI, !Ref "AWS::Region", AMI ]
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroups:
+        - !Ref SecurityGroup
+      UserData:
+        "Fn::Base64": !Sub |
+          #!/bin/bash
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfiguration
+          /opt/aws/bin/cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource AutoScalingGroup
+
+  LoadBalancer:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-load-balancer.yaml
+      Parameters:
+        Subnet1 : !Ref Subnet1
+        Subnet2 : !Ref Subnet2
+        VpcId: !Ref VpcId
+        VpcCIDR: !Ref VpcCIDR
+        Name: !Ref Hostname
+
+  CloudwatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub ${Hostname}-${Stack}-${AWS::StackName}
+      RetentionInDays: 14
+
+  Service:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - LoadBalancer
+      - Cluster
+      - CloudwatchLogsGroup
+      - AutoScalingGroup
+      - DBInstance
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-service.yaml
+      Parameters:
+        Cluster: !Ref Cluster
+        LoadBalancer: !GetAtt LoadBalancer.Outputs.LoadBalancerArn
+        Port: 443
+        Tag: !Ref Code
+        DesiredCount: "1"
+        VpcId: !Ref VpcId
+        Repository: !Ref Repository
+        Identifier: "Code"
+        IsProduction: True
+        DBAddress: !GetAtt DBInstance.Outputs.DBAddress
+        DBPassword: !Ref DBPassword
+        HostedZoneName: !Ref HostedZoneName
+        CloudwatchLogsGroup: !Ref CloudwatchLogsGroup
+        Hostname: !Ref Hostname
+        certificateArn: !Ref certificateArn
+        clientId: !Ref clientId
+        clientSecret: !Ref clientSecret
+        lexBotName: !Ref lexBotName
+
+
+  BotkitAlias:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Sub ${HostedZoneName}.
+      Comment: Alias to botkit elb
+      RecordSets:
+      - Name : !Sub ${Hostname}.${HostedZoneName}.
+        Type : A
+        AliasTarget:
+          HostedZoneId : !GetAtt LoadBalancer.Outputs.CanonicalHostedZoneID
+          DNSName : !GetAtt LoadBalancer.Outputs.DNSName
+
+
+  DBInstance:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-db.yaml
+      Parameters:
+        Subnet1 : !Ref Subnet1
+        Subnet2 : !Ref Subnet2
+        VpcId: !Ref VpcId
+        VpcCIDR: !Ref VpcCIDR
+        DBPassword: !Ref DBPassword
+        SecurityGroup: !Ref SecurityGroup
+
+
+Outputs:
+  ClusterName:
+      Value: !Ref Cluster
+
+  OAuthEndpoint:
+      Value: !Sub https://${Hostname}.${HostedZoneName}/oauth
+
+  LoginEndpoint:
+      Value: !Sub https://${Hostname}.${HostedZoneName}/login

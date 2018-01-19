@@ -1,0 +1,104 @@
+Description: >
+  This template illustrates reference architecture for Deployment on ECS.
+
+Parameters:
+  TemplateBucket:
+    Type: String
+    Description: >
+      S3 Bucket used for nested templates
+    Default: sgas.botkit.demo
+
+  GitHubUser:
+    Type: String
+
+  GitHubRepo:
+    Type: String
+
+  GitHubBranch:
+    Type: String
+
+  GitHubToken:
+    Type: String
+
+  HostedZoneName:
+    Type: String
+
+  Stack:
+    Type: String
+
+  DBPassword:
+    Default: password
+    NoEcho: true
+    Description: testdb admin account password
+    Type: String
+    MinLength: 6
+    MaxLength: 41
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: must contain only alphanumeric characters.
+
+  Hostname:
+    Type: String
+
+  certificateArn:
+    Type: String
+
+  clientId:
+    Type: String
+
+  clientSecret:
+    Type: String
+
+  lexBotName:
+    Type: String
+
+  VpcId:
+    Type: String
+
+  VpcCIDR:
+    Type: String
+
+  Subnet1:
+    Type: String
+
+  Subnet2:
+    Type: String
+
+  ClusterCount:
+    Type: String
+
+  Filename:
+    Type: String
+
+Resources:
+  DeploymentPipeline:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-deployment-pipeline.yaml
+      Parameters:
+        TemplateBucket: !Ref TemplateBucket
+        Subnet1: !Ref Subnet1
+        Subnet2: !Ref Subnet2
+        VpcId: !Ref VpcId
+        VpcCIDR: !Ref VpcCIDR
+        Stack: !Ref Stack
+        HostedZoneName: !Ref HostedZoneName
+        Hostname: !Ref Hostname
+        certificateArn: !Ref certificateArn
+        clientId: !Ref clientId
+        clientSecret: !Ref clientSecret
+        DBPassword: !Ref DBPassword
+        lexBotName: !Ref lexBotName
+        ClusterCount: !Ref ClusterCount
+        Filename: !Ref Filename
+        GitHubUser: !Ref GitHubUser
+        GitHubRepo: !Ref GitHubRepo
+        GitHubBranch: !Ref GitHubBranch
+        GitHubToken: !Ref GitHubToken
+
+Outputs:
+ PipelineUrl:
+    Description: The continuous deployment pipeline in the AWS Management Console.
+    Value: !GetAtt DeploymentPipeline.Outputs.PipelineUrl
+
+
+

@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create Lambda resource
+Parameters:
+  Bucket:
+    Type: String
+
+  Filename:
+    Type: String
+
+  FunctionName:
+    Type: String
+
+Resources:
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/"
+      AssumeRolePolicyDocument: |
+        {
+          "Version": "2012-10-17",
+          "Statement" : [
+            {
+              "Effect" : "Allow",
+              "Principal" : { "Service" : [ "lambda.amazonaws.com" ]},
+              "Action" : [ "sts:AssumeRole" ]
+            }
+            ]
+        }
+      Policies:
+        - PolicyName: LambdaPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:*
+                  - logs:*
+                  - s3:*
+                Resource: "*"
+
+  LambdaFunction:
+    Type: "AWS::Lambda::Function"
+    DependsOn:
+      - LambdaRole
+    Properties:
+      FunctionName: !Ref FunctionName
+      Code:
+        S3Bucket: !Ref Bucket
+        S3Key: !Ref Filename
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt LambdaRole.Arn
+      Timeout: 10
+      Runtime: python2.7
+      MemorySize: 128
