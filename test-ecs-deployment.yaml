@@ -73,7 +73,7 @@ Resources:
   DeploymentPipeline:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-deployment-pipeline.yaml
+      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/test-deployment-pipeline.yaml
       Parameters:
         TemplateBucket: !Ref TemplateBucket
         Subnet1: !Ref Subnet1

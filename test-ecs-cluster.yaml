@@ -222,7 +222,7 @@ Resources:
   LoadBalancer:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-load-balancer.yaml
+      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/test-load-balancer.yaml
       Parameters:
         Subnet1 : !Ref Subnet1
         Subnet2 : !Ref Subnet2
@@ -245,7 +245,7 @@ Resources:
       - AutoScalingGroup
       - DBInstance
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-service.yaml
+      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/test-service.yaml
       Parameters:
         Cluster: !Ref Cluster
         LoadBalancer: !GetAtt LoadBalancer.Outputs.LoadBalancerArn
@@ -283,7 +283,7 @@ Resources:
   DBInstance:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-db.yaml
+      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/test-db.yaml
       Parameters:
         Subnet1 : !Ref Subnet1
         Subnet2 : !Ref Subnet2
