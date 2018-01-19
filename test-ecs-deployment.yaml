@@ -10,21 +10,27 @@ Parameters:
 
   GitHubUser:
     Type: String
+    Default: YourGithubUsernameHere
 
   GitHubRepo:
     Type: String
+    Default: botkit
 
   GitHubBranch:
     Type: String
+    Default: master
 
   GitHubToken:
     Type: String
+    Default: YourGithubTokenHere
 
   HostedZoneName:
     Type: String
+    Default: YourHostedZoneNameHere
 
   Stack:
     Type: String
+    Default: Botkit
 
   DBPassword:
     Default: password
@@ -38,36 +44,47 @@ Parameters:
 
   Hostname:
     Type: String
+    Default: botkit
 
   certificateArn:
     Type: String
+    Default: YourCertificateARnHere
 
   clientId:
     Type: String
+    Default: YourSlackClientIdHere
 
   clientSecret:
     Type: String
+    Default: YourSlackClientSecretHere
 
   lexBotName:
     Type: String
+    Default: botkit
 
   VpcId:
     Type: String
+    Default: YourVpcIdHere
 
   VpcCIDR:
     Type: String
+    Default: YourVpcCIDRHere
 
   Subnet1:
     Type: String
+    Default: YourSubnet1Here
 
   Subnet2:
     Type: String
+    Default: YourSubnet2Here
 
   ClusterCount:
     Type: String
+    Default: "2"
 
   Filename:
     Type: String
+    Default: lambda_function.zip
 
 Resources:
   DeploymentPipeline:
