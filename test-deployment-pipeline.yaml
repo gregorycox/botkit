@@ -329,7 +329,10 @@ Resources:
                       "Stack": "${Stack}",
                       "DBPassword": "${DBPassword}",
                       "lexBotName": "${lexBotName}",
-                      "ClusterSize": "${ClusterCount}"
+                      "ClusterSize": "${ClusterCount}",
+                      "GitHubUser": "${GitHubUser}",
+                      "GitHubRepo": "${GitHubRepo}",
+                      "GitHubBranch": "${GitHubBranch}"
                   }
               InputArtifacts:
                 - Name: App
@@ -339,7 +342,7 @@ Resources:
   LambdaFunction:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/sgas.botkit.demo/test-lambda.yaml
+      TemplateURL: !Sub https://github.com/${GitHubUser}/${GitHubRepo}/raw/${GitHubBranch}/test-lambda.yaml
       Parameters:
         FunctionName: Bot
         Bucket: !Ref TemplateBucket

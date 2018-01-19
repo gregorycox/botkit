@@ -2,6 +2,15 @@ Description: >
   Create ECS Cluster resources for Deployment on ECS.
 
 Parameters:
+  GitHubUser:
+    Type: String
+
+  GitHubRepo:
+    Type: String
+
+  GitHubBranch:
+    Type: String
+
   InstanceType:
     Type: String
     Default: t2.medium
@@ -222,7 +231,7 @@ Resources:
   LoadBalancer:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/test-load-balancer.yaml
+      TemplateURL: !Sub https://github.com/${GitHubUser}/${GitHubRepo}/raw/${GitHubBranch}/test-load-balancer.yaml
       Parameters:
         Subnet1 : !Ref Subnet1
         Subnet2 : !Ref Subnet2
@@ -245,7 +254,7 @@ Resources:
       - AutoScalingGroup
       - DBInstance
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/test-service.yaml
+      TemplateURL: !Sub https://github.com/${GitHubUser}/${GitHubRepo}/raw/${GitHubBranch}/test-service.yaml
       Parameters:
         Cluster: !Ref Cluster
         LoadBalancer: !GetAtt LoadBalancer.Outputs.LoadBalancerArn
@@ -283,7 +292,7 @@ Resources:
   DBInstance:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/test-db.yaml
+      TemplateURL: !Sub https://github.com/${GitHubUser}/${GitHubRepo}/raw/${GitHubBranch}/test-db.yaml
       Parameters:
         Subnet1 : !Ref Subnet1
         Subnet2 : !Ref Subnet2
