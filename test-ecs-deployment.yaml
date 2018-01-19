@@ -73,7 +73,7 @@ Resources:
   DeploymentPipeline:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub https://github.com/${GitHubUser}/${GitHubRepo}/raw/${GitHubBranch}/test-deployment-pipeline.yaml
+      TemplateURL: !Sub https://s3.amazonaws.com/${TemplateBucket}/test-deployment-pipeline.yaml
       Parameters:
         TemplateBucket: !Ref TemplateBucket
         Subnet1: !Ref Subnet1
